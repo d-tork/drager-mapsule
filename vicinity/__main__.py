@@ -25,7 +25,7 @@ def get_dataframe_from_results(results: list) -> pd.DataFrame:
 
 
 def extract_lat_lon_from_point_col(df, colname: str = 'point') -> pd.DataFrame:
-    point_col = df[colname].map(eval)               # a column of type: dict
+    point_col = df[colname]
     point_coords_df = point_col.apply(pd.Series)    # a dataframe where coords col is lists
     geocoords_df = point_coords_df['coordinates'].apply(pd.Series)
     geocoords_df.columns = ['lat', 'lon']
@@ -34,7 +34,7 @@ def extract_lat_lon_from_point_col(df, colname: str = 'point') -> pd.DataFrame:
 
 
 def parse_address_as_string(df, colname: str = 'Address') -> pd.DataFrame:
-    addr_col = df[colname].map(eval)
+    addr_col = df[colname]
     addr_df = addr_col.apply(pd.Series)
     joined = df.join(addr_df)
     return joined
