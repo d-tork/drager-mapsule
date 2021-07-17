@@ -19,8 +19,9 @@ def main():
 def get_dataframe_from_results(results: list) -> pd.DataFrame:
     """Store API results in a dataframe."""
     df = pd.DataFrame.from_dict(results)
-    df_with_coords_extracted = extract_lat_lon_from_point_col(df, colname='point')
-    return df_with_coords_extracted
+    df = extract_lat_lon_from_point_col(df, colname='point')
+    df = parse_address_as_string(df, colname='Address')
+    return df
 
 
 def extract_lat_lon_from_point_col(df, colname: str = 'point') -> pd.DataFrame:
@@ -29,6 +30,13 @@ def extract_lat_lon_from_point_col(df, colname: str = 'point') -> pd.DataFrame:
     geocoords_df = point_coords_df['coordinates'].apply(pd.Series)
     geocoords_df.columns = ['lat', 'lon']
     joined = df.join(geocoords_df)
+    return joined
+
+
+def parse_address_as_string(df, colname: str = 'Address') -> pd.DataFrame:
+    addr_col = df[colname].map(eval)
+    addr_df = addr_col.apply(pd.Series)
+    joined = df.join(addr_df)
     return joined
 
 
