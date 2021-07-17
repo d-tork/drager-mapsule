@@ -22,7 +22,7 @@ class BingMapsAPI(object):
 
     def __init__(self):
         self.logger = logging.getLogger(f'{__name__}.{type(self).__name__}')
-        self.bingMapsKey = keys['API_keys']['bingMapsKey']
+        self.bingMapsKey = keys['bingMapsKey']
 
     def get_geocoords(self, geocoder):
         """Geocode a location with the route coordinates of a street address.
@@ -42,45 +42,23 @@ class BingMapsAPI(object):
                              .get('coordinates'))
         return Geocoords._make(coordinates_value)
 
-    def get_nearby_metro(self, metro_request, homecoords):
-        """Get metro stations nearest a location from Bing API.
+    def get_nearby_businesses(self, business_request) -> list:
+        """Get results of a query near a specified location.
 
         Args:
-            metro_request (BingNearbyMetroAPICall): URL constructor for this API call, containing
+            business_request (BingBusinessAPICall): URL constructor for this API call, containing
                 the start coordinates.
-            homecoords (Geocoords): Start coordinates for creating the walk time request.
 
         Returns:
-            dict: {metro station: walk info}
+            Array of query results.
 
         Raises:
             KeyError: If JSON from Bing does not match expected structure.
 
         """
-        api_response = self._get_api_response(metro_request)
-        metro_stations = {}
-        for result in api_response['resourceSets'][0]['resources']:
-            name = result['name']
-            if (len(name) < 6) | (name == 'Metro Rail'):
-                web = result['Website']
-                url_last_slash = web.rfind('/')
-                url_page_extension = web.rfind('.')
-                name = web[url_last_slash + 1:url_page_extension]
-            station_coords = Geocoords._make(result['point']['coordinates'])
-            walk_request = BingWalkAPICall(
-                startcoords=homecoords,
-                endcoords=station_coords
-            )
-            walk_info = self.get_walk_time(walk_request=walk_request)
-            metro_stations.update(
-                {'{}'.format(name.upper()): dict(
-                    distance=walk_info.distance, duration=walk_info.duration
-                )}
-            )
-        sorted_metro_list = sorted(
-            metro_stations.items(), key=lambda x: x[1].get('distance')
-        )
-        return dict(sorted_metro_list)
+        api_response = self._get_api_response(business_request)
+        results = api_response['resourceSets'][0]['resources']
+        return results
 
     def get_walk_time(self, walk_request):
         """Retrieves the walking distance and duration between two sets of coords.
@@ -162,8 +140,6 @@ class BingAPICall(object):
 class BingGeocoderAPICall(BingAPICall):
     """Constructs URL args for API call to Bing maps for geocoding a street address.
 
-    Adds a vague userLocation to prioritize results in an area.
-
     Attributes:
         baseurl (str): URL for this Bing Maps API call.
         url_args (dict): Parameters to be appended to the `baseurl`.
@@ -171,11 +147,12 @@ class BingGeocoderAPICall(BingAPICall):
     Args:
         address: Mailing address.
         zip_code (Optional): Helps with accuracy of results. Defaults to None.
+        user_location (Optional): Helps with accuracy of results. Defaults to None.
 
     """
     baseurl = r"http://dev.virtualearth.net/REST/v1/Locations"
 
-    def __init__(self, address: str, zip_code: int = None):
+    def __init__(self, address: str, zip_code: int = None, user_location: Geocoords = None):
         url_args = {
             'countryRegion': 'US',
             'postalCode': zip_code,
@@ -183,39 +160,13 @@ class BingGeocoderAPICall(BingAPICall):
             'inclnb': '1',
             'maxResults': '1',
             'key': None,  # added by BingMapAPI method
-            'userLocation': '38.8447476,-77.0519393'
+            'userLocation': user_location.to_string()
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
 
 
-class BingCommuteAPICall(BingAPICall):
-    """Constructs URL args for API call to Bing maps for commute time between two locations.
-
-    Attributes:
-        baseurl (str): URL for this Bing Maps API call.
-        url_args (dict): Parameters to be appended to the `baseurl`.
-
-    Args:
-        startcoords (Geocoords): a namedtuple of geographic coordinates (lat/lon) as integers
-        endcoords (Geocoords): same as startcoords
-
-    """
-    baseurl = r"http://dev.virtualearth.net/REST/V1/Routes/Transit"
-
-    def __init__(self, startcoords, endcoords):
-        url_args = {
-            'wp.0': startcoords.to_string(),
-            'wp.1': endcoords.to_string(),
-            'timeType': 'Arrival',
-            'dateTime': support.get_commute_datetime('bing'),
-            'distanceUnit': 'mi',
-            'key': None,  # added by BingMapAPI method
-        }
-        self.url_args = {k: v for k, v in url_args.items() if v is not None}
-
-
-class BingNearbyMetroAPICall(BingAPICall):
-    """Constructs URL args for API call to Bing maps for nearby metro stations.
+class BingBusinessAPICall(BingAPICall):
+    """Constructs URL args for API call to Bing maps for nearby businesses from query string
 
     Attributes:
         baseurl (str): URL for this Bing Maps API call.
@@ -227,11 +178,15 @@ class BingNearbyMetroAPICall(BingAPICall):
     """
     baseurl = r"http://dev.virtualearth.net/REST/V1/LocalSearch/"
 
-    def __init__(self, startcoords):
+    def __init__(self, query_string: str, startcoords: Geocoords = None):
+        if startcoords:
+            user_location = startcoords.to_string()
+        else:
+            user_location = startcoords
         url_args = {
-            'query': 'metro station',
-            'userLocation': startcoords.to_string(),
-            'maxResults': 2,
+            'query': query_string,
+            'userLocation': user_location,
+            'maxResults': None,
             'key': None,  # added by BingMapAPI method
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
