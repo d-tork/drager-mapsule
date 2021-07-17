@@ -24,10 +24,28 @@ class BingMapsAPI(object):
         self.logger = logging.getLogger(f'{__name__}.{type(self).__name__}')
         self.bingMapsKey = keys['bingMapsKey']
 
+    def get_local_search(self, local_search) -> list:
+        """Get results of a query near a specified location.
+
+        Args:
+            local_search (LocalSearchAPICall): URL constructor for this API call, containing
+                the start coordinates.
+
+        Returns:
+            Array of query results.
+
+        Raises:
+            KeyError: If JSON from Bing does not match expected structure.
+
+        """
+        api_response = self._get_api_response(local_search)
+        results = api_response['resourceSets'][0]['resources']
+        return results
+
     def get_geocoords(self, geocoder):
         """Geocode a location with the route coordinates of a street address.
-        
-        Args: 
+
+        Args:
             geocoder (BingGeocoderAPICall): URL constructor for this API call, containing
                 the address to be geocoded.
 
@@ -41,24 +59,6 @@ class BingMapsAPI(object):
                              .get('geocodePoints')[-1]
                              .get('coordinates'))
         return Geocoords._make(coordinates_value)
-
-    def get_nearby_businesses(self, business_request) -> list:
-        """Get results of a query near a specified location.
-
-        Args:
-            business_request (BingBusinessAPICall): URL constructor for this API call, containing
-                the start coordinates.
-
-        Returns:
-            Array of query results.
-
-        Raises:
-            KeyError: If JSON from Bing does not match expected structure.
-
-        """
-        api_response = self._get_api_response(business_request)
-        results = api_response['resourceSets'][0]['resources']
-        return results
 
     def get_walk_time(self, walk_request):
         """Retrieves the walking distance and duration between two sets of coords.
@@ -82,29 +82,6 @@ class BingMapsAPI(object):
             duration='{}'.format(str(dt.timedelta(seconds=duration)))
         )
         return walk
-
-    def get_driving_info(self, driving_request):
-        """Retrieves the walking distance and duration between two sets of coords.
-
-        Args:
-            driving_request (BingDrivingAPICall): URL constructor for this API call, containing
-                the start and end coordinates.
-
-        Returns:
-            namedtuple:
-                distance (float): Drive distance to destination in miles
-                duration (int): Drive time to destination
-
-        """
-        api_response = self._get_api_response(driving_request)
-        distance = api_response['resourceSets'][0]['resources'][0]['travelDistance']
-        duration = api_response['resourceSets'][0]['resources'][0]['travelDuration']
-        Drive = namedtuple('Drive', 'distance duration')
-        drive = Drive(
-            distance='{:.2f} miles'.format(distance),
-            duration=str(dt.timedelta(seconds=duration))
-        )
-        return drive
 
     def _get_api_response(self, api_call) -> dict:
         """Sends HTTP request built from url and parameters.
@@ -137,7 +114,7 @@ class BingAPICall(object):
     __slots__ = ('baseurl', 'url_args')
 
 
-class BingBusinessAPICall(BingAPICall):
+class LocalSearchAPICall(BingAPICall):
     """Constructs URL args for API call to Bing maps for nearby businesses from query string
 
     Attributes:
@@ -160,7 +137,7 @@ class BingBusinessAPICall(BingAPICall):
         url_args = {
             'query': query,
             'userLocation': user_location,
-            'maxResults': max_results,
+            'maxResults': min(max_results, 25),
             'key': None,  # added by BingMapAPI method
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
@@ -214,35 +191,6 @@ class BingWalkAPICall(BingAPICall):
             'wp.1': endcoords.to_string(),
             'optimize': 'time',
             'distanceUnit': 'mi',
-            'key': None,  # added by BingMapAPI method
-        }
-        self.url_args = {k: v for k, v in url_args.items() if v is not None}
-
-
-class BingDrivingAPICall(BingAPICall):
-    """Constructs URL args for API call to Bing maps for driving time and distance between two locations.
-
-    Attributes:
-        baseurl (str): URL for this Bing Maps API call.
-        url_args (dict): Parameters to be appended to the `baseurl`.
-
-    Args:
-        startcoords (Geocoords): a namedtuple of geographic coordinates (lat/lon) as integers
-        endcoords (Geocoords): same as startcoords
-        dayofweek (int): Day of the week of expected driving, where 0 = Monday
-        hrmin (str): Time of expected driving, as 24-hour clock, e.g. '16:00'
-
-    """
-    baseurl = r"http://dev.virtualearth.net/REST/V1/Routes/Driving"
-
-    def __init__(self, startcoords, endcoords, dayofweek=None, hrmin=None):
-        commute_datetime_args = [x for x in [dayofweek, hrmin] if x is not None]
-        url_args = {
-            'wp.0': startcoords.to_string(),
-            'wp.1': endcoords.to_string(),
-            'optimize': 'timeWithTraffic',
-            'distanceUnit': 'mi',
-            'datetime': support.get_commute_datetime('bing', *commute_datetime_args),
             'key': None,  # added by BingMapAPI method
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
