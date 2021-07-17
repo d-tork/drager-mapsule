@@ -146,13 +146,13 @@ class BingBusinessAPICall(BingAPICall):
 
     Args:
         query: information about the entities you are looking for
-        max_results: maximum number of results to return. Optional, defaults to 100.
+        max_results: maximum number of results to return. Optional, capped at 25.
         startcoords: a namedtuple of geographic coordinates (lat/lon) as integers. Optional.
 
     """
     baseurl = r"http://dev.virtualearth.net/REST/V1/LocalSearch/"
 
-    def __init__(self, query: str, max_results: int = 100, startcoords: Geocoords = None):
+    def __init__(self, query: str, max_results: int = 25, startcoords: Geocoords = None):
         if startcoords:
             user_location = startcoords.to_string()
         else:

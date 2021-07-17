@@ -6,7 +6,7 @@ from vicinity.bing import BingMapsAPI, BingBusinessAPICall, Geocoords
 def main():
     bing_api = BingMapsAPI()
     my_location = Geocoords(38.896593209560756, -77.02620469830747)
-    bank_api_call = BingBusinessAPICall(query='wells fargo', startcoords=my_location)
+    bank_api_call = BingBusinessAPICall(query='wells fargo', startcoords=my_location, max_results=25)
     bank_listings = bing_api.get_nearby_businesses(business_request=bank_api_call)
     bank_listings_df = get_dataframe_from_results(bank_listings)
     print(bank_listings_df.shape)
