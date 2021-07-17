@@ -137,6 +137,35 @@ class BingAPICall(object):
     __slots__ = ('baseurl', 'url_args')
 
 
+class BingBusinessAPICall(BingAPICall):
+    """Constructs URL args for API call to Bing maps for nearby businesses from query string
+
+    Attributes:
+        baseurl (str): URL for this Bing Maps API call.
+        url_args (dict): Parameters to be appended to the `baseurl`.
+
+    Args:
+        query: information about the entities you are looking for
+        max_results: maximum number of results to return. Optional, defaults to 100.
+        startcoords: a namedtuple of geographic coordinates (lat/lon) as integers. Optional.
+
+    """
+    baseurl = r"http://dev.virtualearth.net/REST/V1/LocalSearch/"
+
+    def __init__(self, query: str, max_results: int = 100, startcoords: Geocoords = None):
+        if startcoords:
+            user_location = startcoords.to_string()
+        else:
+            user_location = startcoords
+        url_args = {
+            'query': query,
+            'userLocation': user_location,
+            'maxResults': max_results,
+            'key': None,  # added by BingMapAPI method
+        }
+        self.url_args = {k: v for k, v in url_args.items() if v is not None}
+
+
 class BingGeocoderAPICall(BingAPICall):
     """Constructs URL args for API call to Bing maps for geocoding a street address.
 
@@ -161,33 +190,6 @@ class BingGeocoderAPICall(BingAPICall):
             'maxResults': '1',
             'key': None,  # added by BingMapAPI method
             'userLocation': user_location.to_string()
-        }
-        self.url_args = {k: v for k, v in url_args.items() if v is not None}
-
-
-class BingBusinessAPICall(BingAPICall):
-    """Constructs URL args for API call to Bing maps for nearby businesses from query string
-
-    Attributes:
-        baseurl (str): URL for this Bing Maps API call.
-        url_args (dict): Parameters to be appended to the `baseurl`.
-
-    Args:
-        startcoords (Geocoords): a namedtuple of geographic coordinates (lat/lon) as integers
-
-    """
-    baseurl = r"http://dev.virtualearth.net/REST/V1/LocalSearch/"
-
-    def __init__(self, query_string: str, startcoords: Geocoords = None):
-        if startcoords:
-            user_location = startcoords.to_string()
-        else:
-            user_location = startcoords
-        url_args = {
-            'query': query_string,
-            'userLocation': user_location,
-            'maxResults': None,
-            'key': None,  # added by BingMapAPI method
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
 
