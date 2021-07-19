@@ -159,6 +159,8 @@ class BingGeocoderAPICall(BingAPICall):
     baseurl = r"http://dev.virtualearth.net/REST/v1/Locations"
 
     def __init__(self, address: str, zip_code: int = None, user_location: Geocoords = None):
+        if user_location:
+            user_location = user_location.to_string()
         url_args = {
             'countryRegion': 'US',
             'postalCode': zip_code,
@@ -166,7 +168,7 @@ class BingGeocoderAPICall(BingAPICall):
             'inclnb': '1',
             'maxResults': '1',
             'key': None,  # added by BingMapAPI method
-            'userLocation': user_location.to_string()
+            'userLocation': user_location
         }
         self.url_args = {k: v for k, v in url_args.items() if v is not None}
 
