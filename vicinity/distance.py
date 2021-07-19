@@ -34,7 +34,7 @@ class VicinityCalculator(object):
         self.distances = (
             pd.DataFrame(raw_distances, columns=['entity1', 'entity2', 'distance'])
                 .sort_values('distance')
-                .reset_index()
+                .reset_index(drop=True)
                           )
 
     def _get_results_for_entity(self, query: str) -> pd.DataFrame:
